@@ -41,6 +41,17 @@ public static class DependencyInjection
         "outbox.message.delay"
     ];
 
+    // Tiempos de negocio: de segundos (cobro inmediato) a dias (venta pagada sin retirar).
+    private static readonly string[] BusinessDurationInstruments =
+    [
+        "store.orders.lead_time",
+        "store.payments.collection_time",
+        "store.inventory.sale_pickup_time"
+    ];
+
+    private static readonly double[] BusinessDurationBuckets =
+        [10, 30, 60, 300, 900, 1800, 3600, 7200, 14400, 28800, 86400, 172800, 604800];
+
     private static readonly double[] FastDurationBuckets = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30];
     private static readonly double[] SlowDurationBuckets = [0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 600];
 
@@ -105,6 +116,11 @@ public static class DependencyInjection
                 foreach (string name in SlowDurationInstruments)
                 {
                     metrics.AddView(name, new ExplicitBucketHistogramConfiguration { Boundaries = SlowDurationBuckets });
+                }
+
+                foreach (string name in BusinessDurationInstruments)
+                {
+                    metrics.AddView(name, new ExplicitBucketHistogramConfiguration { Boundaries = BusinessDurationBuckets });
                 }
 
                 metricsFactory?.Invoke(metrics);

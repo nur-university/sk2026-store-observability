@@ -46,6 +46,28 @@ Nombres tal como llegan a Prometheus (unidad `s` -> sufijo `_seconds`, contadore
 
 Los buckets de los histogramas de duracion se fijan aqui (`AddView`), porque en .NET 8 el instrumento no los declara.
 
+## Metricas de negocio (meters `Store.*`)
+
+Cada servicio las toma de los cambios de estado que su `UnitOfWork` va a persistir (`Capture`) y las registra
+solo cuando el `SaveChanges` tuvo exito (`Record`): un commit reintentado o revertido no cuenta.
+`previous_status` vale `none` cuando la entidad es nueva.
+
+| Instrumento | Etiquetas | Que mide |
+|---|---|---|
+| `store.orders.transitions` | `status`, `previous_status`, `refund_required` (solo en `Canceled`) | Cambios de estado de la nota de venta |
+| `store.orders.lead_time` (s) | `status` (`Paid`, `Completed`, `Canceled`, `Failed`) | Desde que inicia la nota hasta ese estado |
+| `store.payments.transitions` | `status`, `previous_status` | Cambios de estado de la orden de cobro |
+| `store.payments.collected` / `.collected.amount` | `method` (`Cash`, `BankTransfer`, `Card`) | Cobros e importe cobrado en caja |
+| `store.payments.collection_time` (s) | `method` | Espera en caja hasta el cobro |
+| `store.inventory.transactions` | `status`, `previous_status`, `concept`, `type` | Cambios de estado de las transacciones |
+| `store.inventory.units` | `concept`, `type` | Unidades que entraron/salieron al completarse |
+| `store.inventory.sale_pickup_time` (s) | - | Desde la reserva hasta que el cliente retira |
+| `store.identity.logins` | `outcome` (`success`, `unknown_user`, `inactive`, `invalid_credentials`, `locked_out`) | Intentos de login |
+
+Los hechos de la saga tambien se ven en `outbox.messages.processed{message_type}` (OrderStarted, OrderPaid,
+ReservationTransactionFailed, ...). Lo que es *estado actual* (ordenes por estado, stock, pagadas sin retirar)
+se consulta a la base de datos desde Grafana, no con metricas.
+
 ## Cambios respecto a la version anterior
 
 - El exportador Jaeger (UDP) se elimino; `jeagerSettings` se conserva en la firma por compatibilidad y se ignora.
